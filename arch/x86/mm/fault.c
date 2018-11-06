@@ -1175,7 +1175,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	int fault, major = 0;
 	unsigned int flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
 
-	tsk = current;
+	tsk = current;  //当前进程
 	mm = tsk->mm;
 
 	/*
@@ -1190,6 +1190,8 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 		return;
 
 	/*
+		我们因为异常而进入了内核虚拟内存空间 address >= TASK_SIZE
+		参考页表为init_mm.pgd
 	 * We fault-in kernel-space virtual memory on-demand. The
 	 * 'reference' page table is init_mm.pgd.
 	 *
@@ -1204,6 +1206,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 */
 	if (unlikely(fault_in_kernel_space(address))) {
 		if (!(error_code & (PF_RSVD | PF_USER | PF_PROT))) {
+			/* 同步页表、将该进程的页表与内核的主页表的信息同步 */
 			if (vmalloc_fault(address) >= 0)
 				return;
 
@@ -1266,6 +1269,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 
 	perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS, 1, regs, address);
 
+	/* error-code是写访问，增加flag的写标志位 */
 	if (error_code & PF_WRITE)
 		flags |= FAULT_FLAG_WRITE;
 	if (error_code & PF_INSTR)
@@ -1304,14 +1308,15 @@ retry:
 		might_sleep();
 	}
 
+	/* 检查进程的虚拟地址空间（vm_area_struct）是否包含异常地址所在的区域 */
 	vma = find_vma(mm, address);
-	if (unlikely(!vma)) {
+	if (unlikely(!vma)) {  //未找到该vm_area_struct实例，则访问无效
 		bad_area(regs, error_code, address);
 		return;
 	}
 	if (likely(vma->vm_start <= address))
 		goto good_area;
-	if (unlikely(!(vma->vm_flags & VM_GROWSDOWN))) {
+	if (unlikely(!(vma->vm_flags & VM_GROWSDOWN))) { //不是栈空间，访问无效
 		bad_area(regs, error_code, address);
 		return;
 	}
@@ -1327,6 +1332,7 @@ retry:
 			return;
 		}
 	}
+	/* 是栈空间，调用expand_stack拓展栈空间 */
 	if (unlikely(expand_stack(vma, address))) {
 		bad_area(regs, error_code, address);
 		return;
@@ -1343,6 +1349,7 @@ good_area:
 	}
 
 	/*
+		如果由于任何原因我们无法处理故障，请确保我们优雅地退出而不是无休止地重做故障。
 	 * If for any reason at all we couldn't handle the fault,
 	 * make sure we exit gracefully rather than endlessly redo
 	 * the fault.  Since we never set FAULT_FLAG_RETRY_NOWAIT, if
@@ -1398,7 +1405,8 @@ NOKPROBE_SYMBOL(__do_page_fault);
 
 dotraplinkage void notrace
 do_page_fault(struct pt_regs *regs, unsigned long error_code)
-{
+{	
+	/* 读取CPU控制寄存器CR2，获取地址 */
 	unsigned long address = read_cr2(); /* Get the faulting address */
 	enum ctx_state prev_state;
 

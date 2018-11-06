@@ -288,10 +288,11 @@ extern pgprot_t protection_map[16];
  * pgoff should be used in favour of virtual_address, if possible.
  */
 struct vm_fault {
+	//缺页异常的error_code，标志位
 	unsigned int flags;		/* FAULT_FLAG_xxx flags */
-	gfp_t gfp_mask;			/* gfp mask to be used for allocations */
+	gfp_t gfp_mask;			/* gfp mask to be used for allocations，申请页框的标志 */
 	pgoff_t pgoff;			/* Logical page offset based on vma */
-	void __user *virtual_address;	/* Faulting virtual address */
+	void __user *virtual_address;	/* Faulting virtual address 。发生缺页异常的虚拟地址*/
 
 	struct page *cow_page;		/* Handler may choose to COW */
 	struct page *page;		/* ->fault handlers should return a
@@ -302,7 +303,7 @@ struct vm_fault {
 	/* for ->map_pages() only */
 	pgoff_t max_pgoff;		/* map pages for offset from pgoff till
 					 * max_pgoff inclusive */
-	pte_t *pte;			/* pte entry associated with ->pgoff */
+	pte_t *pte;			/* pte entry associated with ->pgoff ，对应的页表项*/
 };
 
 /*
@@ -580,6 +581,7 @@ void free_compound_page(struct page *page);
 
 #ifdef CONFIG_MMU
 /*
+	设置页表项的写权限
  * Do pte_mkwrite, but only if the vma says VM_WRITE.  We do this when
  * servicing faults for write access.  In the normal case, do always want
  * pte_mkwrite.  But get_user_pages can cause write faults for mappings
@@ -588,7 +590,7 @@ void free_compound_page(struct page *page);
 static inline pte_t maybe_mkwrite(pte_t pte, struct vm_area_struct *vma)
 {
 	if (likely(vma->vm_flags & VM_WRITE))
-		pte = pte_mkwrite(pte);
+		pte = pte_mkwrite(pte);  //设置页表项的写权限
 	return pte;
 }
 
@@ -1349,6 +1351,7 @@ static inline int vma_growsdown(struct vm_area_struct *vma, unsigned long addr)
 	return vma && (vma->vm_end == addr) && (vma->vm_flags & VM_GROWSDOWN);
 }
 
+/*如果vm_ops字段为空，则说明这是一个匿名映射*/
 static inline bool vma_is_anonymous(struct vm_area_struct *vma)
 {
 	return !vma->vm_ops;
@@ -1677,6 +1680,7 @@ static inline void pgtable_page_dtor(struct page *page)
 	dec_zone_page_state(page, NR_PAGETABLE);
 }
 
+//有address和pmd，得到相应的页表项
 #define pte_offset_map_lock(mm, pmd, address, ptlp)	\
 ({							\
 	spinlock_t *__ptl = pte_lockptr(mm, pmd);	\

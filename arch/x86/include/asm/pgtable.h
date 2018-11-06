@@ -584,6 +584,7 @@ static inline unsigned long pmd_index(unsigned long address)
  * (Currently stuck as a macro because of indirect forward reference
  * to linux/mm.h:page_to_nid())
  */
+ //创建一个页表项。必须将page实例和所需的页访问权限作为参数传递
 #define mk_pte(page, pgprot)   pfn_pte(page_to_pfn(page), (pgprot))
 
 /*

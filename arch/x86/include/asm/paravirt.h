@@ -465,6 +465,10 @@ static inline void set_pte(pte_t *ptep, pte_t pte)
 			    pte.pte);
 }
 
+/* 
+   将设置好的新页的页表项内容写到对应页表项中，
+   到这里，此页表项原来映射的是旧页，现在变成映射了新页了 
+*/
 static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
 			      pte_t *ptep, pte_t pte)
 {

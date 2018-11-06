@@ -141,6 +141,7 @@ static void anon_vma_chain_link(struct vm_area_struct *vma,
 }
 
 /**
+	为内存区域建立一个新的vma->anno_vma实例,用于反向映射
  * anon_vma_prepare - attach an anon_vma to a memory region
  * @vma: the memory region in question
  *
@@ -1235,6 +1236,7 @@ void do_page_add_anon_rmap(struct page *page,
 }
 
 /**
+	将匿名页面添加到反向映射数据结构中
  * page_add_new_anon_rmap - add pte mapping to a new anonymous page
  * @page:	the page to add the mapping to
  * @vma:	the vm area in which the mapping is added
@@ -1261,7 +1263,7 @@ void page_add_new_anon_rmap(struct page *page,
 		/* Anon THP always mapped first with PMD */
 		VM_BUG_ON_PAGE(PageTransCompound(page), page);
 		/* increment count (starts at -1) */
-		atomic_set(&page->_mapcount, 0);
+		atomic_set(&page->_mapcount, 0);  //增加_mapcount计数
 	}
 	__mod_zone_page_state(page_zone(page), NR_ANON_PAGES, nr);
 	__page_set_anon_rmap(page, vma, address, 1);
@@ -1351,6 +1353,11 @@ static void page_remove_anon_compound_rmap(struct page *page)
 }
 
 /**
+  移除page的反向映射
+  分成两类：
+  	1、文件页的反向映射：page_remove_file_rmap实现
+  	2、匿名页的反向映射：page_remove_anon_compound_rmap实现
+
  * page_remove_rmap - take down pte mapping from a page
  * @page:	page to remove mapping from
  * @compound:	uncharge the page as compound or small page

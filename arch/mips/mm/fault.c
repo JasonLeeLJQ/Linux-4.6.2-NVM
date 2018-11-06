@@ -99,14 +99,15 @@ static void __kprobes __do_page_fault(struct pt_regs *regs, unsigned long write,
 		flags |= FAULT_FLAG_USER;
 retry:
 	down_read(&mm->mmap_sem);
+	/* 查找是否存在address对应的vm_area_struct实例 */
 	vma = find_vma(mm, address);
 	if (!vma)
 		goto bad_area;
 	if (vma->vm_start <= address)
 		goto good_area;
-	if (!(vma->vm_flags & VM_GROWSDOWN))
+	if (!(vma->vm_flags & VM_GROWSDOWN))  //不是栈空间
 		goto bad_area;
-	if (expand_stack(vma, address))
+	if (expand_stack(vma, address))  //是栈空间，拓展栈空间
 		goto bad_area;
 /*
  * Ok, we have a good vm_area for this memory access, so
