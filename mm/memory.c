@@ -2769,7 +2769,12 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		return VM_FAULT_SIGSEGV;
 
 	/* Use the zero-page for reads */
-	/* 如果是分配只读属性的页面，使用一个全0的全局页面empty_zero_page */
+	/* 
+		思想：对于只读的匿名页面，分配新页面没有意义，所以使用一个全局零页。
+		
+		如果是分配只读属性的页面，使用一个全0的全局页面empty_zero_page
+		零页面在系统初始化时候已经初始化好了
+	*/
 	if (!(flags & FAULT_FLAG_WRITE) && !mm_forbids_zeropage(mm)) {
 		entry = pte_mkspecial(pfn_pte(my_zero_pfn(address),
 						vma->vm_page_prot));
@@ -2922,7 +2927,7 @@ void do_set_pte(struct vm_area_struct *vma, unsigned long address,
 	if (anon) { //如果是匿名页，则将该页插入到反向映射数据结构
 		inc_mm_counter_fast(vma->vm_mm, MM_ANONPAGES);
 		page_add_new_anon_rmap(page, vma, address, false);
-	} else { //如果是文件页
+	} else { //如果是文件页，为文件页建立反向映射
 		inc_mm_counter_fast(vma->vm_mm, mm_counter_file(page));
 		page_add_file_rmap(page);
 	}
@@ -3559,7 +3564,7 @@ static int __handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	 * read mode and khugepaged takes it in write mode. So now it's
 	 * safe to run pte_offset_map().
 	 */
-	pte = pte_offset_map(pmd, address);
+	pte = pte_offset_map(pmd, address); //address所在的页表项
 
 	/* 分析缺页异常的原因 */
 	return handle_pte_fault(mm, vma, address, pte, pmd, flags);
@@ -3567,6 +3572,8 @@ static int __handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 
 /*
 	当我们到达这里时，我们已经掌握了mm_struct的信号量
+	参数：@flags：该page的操作（读操作或者写操作）
+					如果是写操作，则FAULT_FLAG_WRITE置位
  * By the time we get here, we already hold the mm semaphore
  *
  * The mmap_sem may have been released depending on flags and our

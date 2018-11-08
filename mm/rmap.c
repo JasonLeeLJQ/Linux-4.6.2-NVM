@@ -178,6 +178,7 @@ int anon_vma_prepare(struct vm_area_struct *vma)
 		struct mm_struct *mm = vma->vm_mm;
 		struct anon_vma *allocated;
 
+		/* 申请一个anon_vma_chain对象 */
 		avc = anon_vma_chain_alloc(GFP_KERNEL);
 		if (!avc)
 			goto out_enomem;
@@ -185,7 +186,7 @@ int anon_vma_prepare(struct vm_area_struct *vma)
 		anon_vma = find_mergeable_anon_vma(vma);
 		allocated = NULL;
 		if (!anon_vma) {
-			anon_vma = anon_vma_alloc();
+			anon_vma = anon_vma_alloc();  //申请一个anno_vma对象
 			if (unlikely(!anon_vma))
 				goto out_enomem_free_avc;
 			allocated = anon_vma;
@@ -1113,6 +1114,7 @@ void page_move_anon_rmap(struct page *page,
 }
 
 /**
+	将匿名页添加到反向映射数据结构中
  * __page_set_anon_rmap - set up new anonymous rmap
  * @page:	Page to add to rmap	
  * @vma:	VM area to add page to.
@@ -1137,6 +1139,7 @@ static void __page_set_anon_rmap(struct page *page,
 	if (!exclusive)
 		anon_vma = anon_vma->root;
 
+	/* 建立反向映射：page和page所在的内存区域vm_area_struct（anno_vma）相关联 */
 	anon_vma = (void *) anon_vma + PAGE_MAPPING_ANON;
 	page->mapping = (struct address_space *) anon_vma;
 	page->index = linear_page_index(vma, address);
@@ -1170,6 +1173,7 @@ static void __page_check_anon_rmap(struct page *page,
 }
 
 /**
+	对匿名页建立反向映射
  * page_add_anon_rmap - add pte mapping to an anonymous page
  * @page:	the page to add the mapping to
  * @vma:	the vm area in which the mapping is added
@@ -1205,7 +1209,7 @@ void do_page_add_anon_rmap(struct page *page,
 		mapcount = compound_mapcount_ptr(page);
 		first = atomic_inc_and_test(mapcount);
 	} else {
-		first = atomic_inc_and_test(&page->_mapcount);
+		first = atomic_inc_and_test(&page->_mapcount);  //_mapcount计数+1
 	}
 
 	if (first) {
@@ -1229,6 +1233,7 @@ void do_page_add_anon_rmap(struct page *page,
 
 	/* address might be in next vma when migration races vma_adjust */
 	if (first)
+		/* 建立反向映射 */
 		__page_set_anon_rmap(page, vma, address,
 				flags & RMAP_EXCLUSIVE);
 	else
@@ -1236,7 +1241,7 @@ void do_page_add_anon_rmap(struct page *page,
 }
 
 /**
-	将匿名页面添加到反向映射数据结构中
+	将匿名页面添加到反向映射数据结构中,将_mapcount置位0
  * page_add_new_anon_rmap - add pte mapping to a new anonymous page
  * @page:	the page to add the mapping to
  * @vma:	the vm area in which the mapping is added
@@ -1263,13 +1268,15 @@ void page_add_new_anon_rmap(struct page *page,
 		/* Anon THP always mapped first with PMD */
 		VM_BUG_ON_PAGE(PageTransCompound(page), page);
 		/* increment count (starts at -1) */
-		atomic_set(&page->_mapcount, 0);  //增加_mapcount计数
+		atomic_set(&page->_mapcount, 0);  //将_mapcount置位0
 	}
 	__mod_zone_page_state(page_zone(page), NR_ANON_PAGES, nr);
+	/* 将匿名页面添加到反向映射结构中 */
 	__page_set_anon_rmap(page, vma, address, 1);
 }
 
 /**
+	为文件页建立反向映射
  * page_add_file_rmap - add pte mapping to a file page
  * @page: the page to add the mapping to
  *
@@ -1278,6 +1285,8 @@ void page_add_new_anon_rmap(struct page *page,
 void page_add_file_rmap(struct page *page)
 {
 	lock_page_memcg(page);
+
+	/* _mapcount计数+1，并更新各内存域的统计量 */
 	if (atomic_inc_and_test(&page->_mapcount)) {
 		__inc_zone_page_state(page, NR_FILE_MAPPED);
 		mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED);

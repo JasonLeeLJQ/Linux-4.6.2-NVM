@@ -23,6 +23,19 @@
 struct address_space;
 struct mem_cgroup;
 
+/*ADD*/
+/* 添加page_short结构的slub缓存 */
+struct kmem_cache *page_short_cachep;
+
+/* 申请page_short结构一个kmem_cache */
+page_short_cachep = kmem_cache_create("page_short_cachep",
+			sizeof(struct page_short), 0,
+			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_NOTRACK|SLAB_ACCOUNT,
+			NULL);
+
+/*end ADD*/
+
+
 #define USE_SPLIT_PTE_PTLOCKS	(NR_CPUS >= CONFIG_SPLIT_PTLOCK_CPUS)
 #define USE_SPLIT_PMD_PTLOCKS	(USE_SPLIT_PTE_PTLOCKS && \
 		IS_ENABLED(CONFIG_ARCH_ENABLE_SPLIT_PMD_PTLOCK))
@@ -51,7 +64,7 @@ struct page {
 						 * If page mapped as anonymous
 						 * memory, low bit is set, and
 						 * it points to anon_vma object:
-						 * see PAGE_MAPPING_ANON below.
+						 * see PAGE_MAPPING_ANON（=1） below.
 						 */
 		void *s_mem;			/* slab first object */
 		atomic_t compound_mapcount;	/* first tail page */

@@ -2044,6 +2044,8 @@ static void do_async_mmap_readahead(struct vm_area_struct *vma,
 }
 
 /**
+	在缺页异常发生时，读取磁盘文件到page中
+	在应用程序访问映射区域但对应的数据不在物理内存时调用。
  * filemap_fault - read in file data for page fault handling
  * @vma:	vma in which the fault was taken
  * @vmf:	struct vm_fault containing details of the fault

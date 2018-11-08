@@ -331,6 +331,49 @@ enum zone_type {
 
 #ifndef __GENERATING_BOUNDS_H
 
+/*ADD*/
+enum hybrid_clock_list{
+	clock_nvm_cold,
+	clock_nvm_hot,
+	clock_dram_cold,
+	clock_dram_hot,
+	NR_CLOCK_LISTS  //4
+};
+
+enum hybrid_history_list{
+	history_nvm_list,
+	history_dram_list,
+	NR_HISTORY_LIST   //2
+};
+
+struct hybrid{
+	struct list_head  clock_lists[NR_CLOCK_LISTS];
+} hybrid_four_lists;
+
+/* 在原始的page结构上重新包装一个新的page_short结构，添加一些标志位 
+ * 用于zone中的4个CLOCK链表 
+ */
+struct page_short {
+	bool refer_bit;
+	bool dirty_bit;
+	bool sugg_bit;
+	bool source_bit;
+	struct page *page;       //
+	struct list_head clock;  //clock链表,链接到hybrid_clock_list
+};
+
+/*新增page_history结构，用于历史队列中
+	index：物理页框号
+*/
+struct page_history {
+	bool sugg_bit;
+	bool source_bit;
+	pgoff_t index;       //页框号
+	struct list_head lru;  //历史队列的lru链表
+};
+
+/*end ADD*/
+
 struct zone {
 	/* Read-mostly fields */
 

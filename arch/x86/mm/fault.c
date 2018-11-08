@@ -1343,6 +1343,7 @@ retry:
 	 * we can handle it..
 	 */
 good_area:
+	/* 访问权限是否不一致，不一致则返回bad_area */
 	if (unlikely(access_error(error_code, vma))) {
 		bad_area_access_error(regs, error_code, address, vma);
 		return;
@@ -1355,7 +1356,7 @@ good_area:
 	 * the fault.  Since we never set FAULT_FLAG_RETRY_NOWAIT, if
 	 * we get VM_FAULT_RETRY back, the mmap_sem has been unlocked.
 	 */
-	fault = handle_mm_fault(mm, vma, address, flags);
+	fault = handle_mm_fault(mm, vma, address, flags);  //处理缺页异常
 	major |= fault & VM_FAULT_MAJOR;
 
 	/*
@@ -1403,10 +1404,11 @@ good_area:
 }
 NOKPROBE_SYMBOL(__do_page_fault);
 
+/* 处理缺页异常 */
 dotraplinkage void notrace
 do_page_fault(struct pt_regs *regs, unsigned long error_code)
 {	
-	/* 读取CPU控制寄存器CR2，获取地址 */
+	/* 读取CPU控制寄存器CR2，获取发生缺页异常的地址 */
 	unsigned long address = read_cr2(); /* Get the faulting address */
 	enum ctx_state prev_state;
 

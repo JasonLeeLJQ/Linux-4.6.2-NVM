@@ -3608,6 +3608,50 @@ unsigned int page_is_NVM(struct page* page)
 }
 EXPORT_SYMBOL(page_is_NVM);
 
+void init_page_short(struct page *page,struct page_short *page_short)
+{
+	page_short->page = page;
+
+	/* 初始化标志位 */
+	page_short->refer_bit = false;
+	page_short->dirty_bit = false;
+	page_short->sugg_bit = false;
+	page_short->source_bit = false;
+}
+
+struct page_short* page_to_page_short(struct page *page,bool write)
+{
+	/* slub分配一个page_short结构 */
+	struct page_short *page_short = kmem_cache_alloc(page_short_cachep, GFP_KERNEL);
+	
+	init_page_short(page, page_short);
+	
+
+	if(write){
+		page_short->dirty_bit = true;
+	}
+	page_short->refer_bit = true;
+	
+	return page_short;
+}
+
+//TODO:判断链表的type
+unsigned int page_short_belong_to_which_type(struct page *page, int flag)
+{
+	
+}
+
+int add_page_short_to_clock_list(struct page_short *page_short, unsigned int type)
+{
+	int error = 0;
+	if(type < 0 || type >= NR_CLOCK_LISTS)
+	{
+		return error;
+	}
+	/* page_short插入到CLOCK链表 */
+	list_add(&page_short->clock, hybrid_four_lists.clock_lists[type]);
+}
+
 /*end ADD*/
 
 void __free_pages(struct page *page, unsigned int order)
