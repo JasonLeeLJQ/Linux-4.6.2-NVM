@@ -3677,7 +3677,7 @@ int add_page_short_to_clock_list(struct page_short *page_short, unsigned int typ
 		return error;
 	}
 	/* page_short插入到CLOCK链表 */
-	list_add(&page_short->clock, clock_lists[type]);
+	//list_add(&page_short->clock, );
 }
 
 /*end ADD*/
