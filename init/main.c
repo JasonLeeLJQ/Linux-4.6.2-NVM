@@ -688,6 +688,12 @@ asmlinkage __visible void __init start_kernel(void)
 	cred_init();
 	fork_init();
 	proc_caches_init();
+
+	/*ADD*/
+	//混合存储项目初始化slab缓存
+	hybrid_cache_init();
+	/*end ADD*/
+	
 	buffer_init();
 	key_init();
 	security_init();

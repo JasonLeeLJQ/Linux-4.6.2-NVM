@@ -134,15 +134,26 @@ gfp_t gfp_allowed_mask __read_mostly = GFP_BOOT_MASK;
 /*ADD*/
 /* 
 	添加page_short结构的slub缓存 
-    申请page_short结构一个kmem_cache 
 */
-struct kmem_cache * page_short_cachep = kmem_cache_create("page_short_slab_cache",
+struct kmem_cache * page_short_cachep;
+
+
+
+void __init page_short_cache_init(void)
+{
+	/* 为page_short申请一个kmem_cache */
+	page_short_cachep = kmem_cache_create("page_short_cache",
 			sizeof(struct page_short), 0,
 			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_NOTRACK|SLAB_ACCOUNT,
 			NULL);
+}
+
+void __init hybrid_cache_init(void)
+{
+	page_short_cache_init();
+}
 
 /*end ADD*/
-
 
 /*
  * A cached value of the page's pageblock's migratetype, used when the page is
