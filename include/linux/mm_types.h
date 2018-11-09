@@ -23,18 +23,6 @@
 struct address_space;
 struct mem_cgroup;
 
-/*ADD*/
-/* 添加page_short结构的slub缓存 */
-struct kmem_cache *page_short_cachep;
-
-/* 申请page_short结构一个kmem_cache */
-page_short_cachep = kmem_cache_create("page_short_cachep",
-			sizeof(struct page_short), 0,
-			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_NOTRACK|SLAB_ACCOUNT,
-			NULL);
-
-/*end ADD*/
-
 
 #define USE_SPLIT_PTE_PTLOCKS	(NR_CPUS >= CONFIG_SPLIT_PTLOCK_CPUS)
 #define USE_SPLIT_PMD_PTLOCKS	(USE_SPLIT_PTE_PTLOCKS && \

@@ -81,6 +81,19 @@ unsigned int page_is_NVM(struct page* page);
 void show_buddy_info_test(void);
 /*end ADD*/
 
+/*ADD*/
+/* 添加page_short结构的slub缓存 */
+struct kmem_cache * page_short_cachep;
+
+/* 申请page_short结构一个kmem_cache */
+page_short_cachep = kmem_cache_create("page_short_cachep",
+			sizeof(struct page_short), 0,
+			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_NOTRACK|SLAB_ACCOUNT,
+			NULL);
+
+/*end ADD*/
+
+
 #ifdef CONFIG_USE_PERCPU_NUMA_NODE_ID
 DEFINE_PER_CPU(int, numa_node);
 EXPORT_PER_CPU_SYMBOL(numa_node);
