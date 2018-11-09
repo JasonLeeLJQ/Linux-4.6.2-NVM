@@ -16,12 +16,13 @@
  * generate better code by using them directly rather than
  * using the generic single-entry routines.
  */
-
+//链表头结点的初始化
 #define LIST_HEAD_INIT(name) { &(name), &(name) }
 
 #define LIST_HEAD(name) \
 	struct list_head name = LIST_HEAD_INIT(name)
 
+//初始化list_head
 static inline void INIT_LIST_HEAD(struct list_head *list)
 {
 	WRITE_ONCE(list->next, list);

@@ -93,6 +93,11 @@
 extern void show_buddy_info_test(void);
 //测试每CPU页框高速缓存中的数据
 extern void show_per_cpu_pageset_info_test(void);
+
+void init_hybrid_four_lists(void);
+
+void init_hybrid_history_list(void);
+
 /*end ADD*/
 
 static int kernel_init(void *);
@@ -465,6 +470,31 @@ void __init __weak thread_info_cache_init(void)
 }
 #endif
 
+/*ADD*/
+struct list_head  clock_lists[NR_CLOCK_LISTS];
+
+struct list_head  history_lists[NR_HISTORY_LISTS];
+
+void init_hybrid_four_lists(void)
+{
+	unsigned int i;
+	for(i=0; i< NR_CLOCK_LISTS; ++i)
+	{
+		LIST_HEAD_INIT(clock_lists[i]);
+	}	
+}
+
+void init_hybrid_history_list(void)
+{
+	unsigned int i;
+	for(i=0; i<NR_HISTORY_LISTS; ++i)
+	{
+		LIST_HEAD_INIT(history_lists[i]);
+	}
+}
+
+/*end ADD*/
+
 /*
  * Set up kernel memory allocators
  */
@@ -479,6 +509,14 @@ static void __init mm_init(void)
 
 	/*ADD*/
 	show_buddy_info_test();  //打印伙伴系统的内部信息
+	/*end ADD*/
+
+	/*ADD*/
+
+	printk(KERN_EMERG "开始初始化CLOCK链表和历史队列\n");
+	
+	init_hybrid_four_lists();  //初始化4个CLOCK链表
+	init_hybrid_history_list();	 //初始化2个历史队列
 	/*end ADD*/
 
 	kmem_cache_init();

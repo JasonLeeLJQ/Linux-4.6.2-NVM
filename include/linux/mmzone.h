@@ -343,12 +343,10 @@ enum hybrid_clock_list{
 enum hybrid_history_list{
 	history_nvm_list,
 	history_dram_list,
-	NR_HISTORY_LIST   //2
+	NR_HISTORY_LISTS   //2
 };
 
-struct hybrid{
-	struct list_head  clock_lists[NR_CLOCK_LISTS];
-} hybrid_four_lists;
+
 
 /* 在原始的page结构上重新包装一个新的page_short结构，添加一些标志位 
  * 用于zone中的4个CLOCK链表 
