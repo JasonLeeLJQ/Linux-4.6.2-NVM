@@ -81,17 +81,7 @@ unsigned int page_is_NVM(struct page* page);
 void show_buddy_info_test(void);
 /*end ADD*/
 
-/*ADD*/
-/* 添加page_short结构的slub缓存 */
-struct kmem_cache * page_short_cachep;
 
-/* 申请page_short结构一个kmem_cache */
-page_short_cachep = kmem_cache_create("page_short_cachep",
-			sizeof(struct page_short), 0,
-			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_NOTRACK|SLAB_ACCOUNT,
-			NULL);
-
-/*end ADD*/
 
 
 #ifdef CONFIG_USE_PERCPU_NUMA_NODE_ID
@@ -139,6 +129,20 @@ unsigned long totalcma_pages __read_mostly;
 
 int percpu_pagelist_fraction;
 gfp_t gfp_allowed_mask __read_mostly = GFP_BOOT_MASK;
+
+
+/*ADD*/
+/* 
+	添加page_short结构的slub缓存 
+    申请page_short结构一个kmem_cache 
+*/
+struct kmem_cache * page_short_cachep = kmem_cache_create("page_short_slab_cache",
+			sizeof(struct page_short), 0,
+			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_NOTRACK|SLAB_ACCOUNT,
+			NULL);
+
+/*end ADD*/
+
 
 /*
  * A cached value of the page's pageblock's migratetype, used when the page is
@@ -3662,7 +3666,7 @@ int add_page_short_to_clock_list(struct page_short *page_short, unsigned int typ
 		return error;
 	}
 	/* page_short插入到CLOCK链表 */
-	list_add(&page_short->clock, hybrid_four_lists.clock_lists[type]);
+	list_add(&page_short->clock, clock_lists[type]);
 }
 
 /*end ADD*/
