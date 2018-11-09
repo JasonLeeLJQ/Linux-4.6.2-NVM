@@ -94,6 +94,9 @@ extern void show_buddy_info_test(void);
 //测试每CPU页框高速缓存中的数据
 extern void show_per_cpu_pageset_info_test(void);
 
+extern void hybrid_cache_init(void);
+
+
 void init_hybrid_four_lists(void);
 
 void init_hybrid_history_list(void);
@@ -480,7 +483,7 @@ void init_hybrid_four_lists(void)
 	unsigned int i;
 	for(i=0; i< NR_CLOCK_LISTS; ++i)
 	{
-		LIST_HEAD_INIT(clock_lists[i]);
+		clock_lists[i] = LIST_HEAD_INIT(clock_lists[i]);
 	}	
 }
 
@@ -489,7 +492,7 @@ void init_hybrid_history_list(void)
 	unsigned int i;
 	for(i=0; i<NR_HISTORY_LISTS; ++i)
 	{
-		LIST_HEAD_INIT(history_lists[i]);
+		history_lists[i] = LIST_HEAD_INIT(history_lists[i]);
 	}
 }
 
