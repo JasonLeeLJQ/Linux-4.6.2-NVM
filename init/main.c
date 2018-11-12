@@ -691,10 +691,6 @@ asmlinkage __visible void __init start_kernel(void)
 	/*ADD*/
 	//混合存储项目初始化slab缓存
 	hybrid_cache_init();
-
-	//初始化4个CLOCK链表 & 2个历史队列
-	init_hybrid_four_lists();
-	init_hybrid_history_list();
 	/*end ADD*/
 	
 	buffer_init();
