@@ -316,6 +316,10 @@ void vmalloc_sync_all(void)
 }
 
 /*
+ 
+ * 对于发生缺页异常的指针位于vmalloc区情况的处理，主要是将
+ * 主内核页表向当前进程的内核页表同步。
+
  * 32-bit:
  *
  *   Handle a fault on the vmalloc or module mapping area
@@ -339,7 +343,12 @@ static noinline int vmalloc_fault(unsigned long address)
 	 * Do _not_ use "current" here. We might be inside
 	 * an interrupt in the middle of a task switch..
 	 */
+	 	
+	/*获取pgd(最顶级页目录)地址，直接从CR3寄存器中读取。
+		*不要通过current获取，因为缺页异常可能在上下文切换的过程中发生，
+		*此时如果通过current获取，则可能会出问题*/
 	pgd_paddr = read_cr3();
+	//从主内核页表中，同步vmalloc区发生缺页异常地址对应的页表
 	pmd_k = vmalloc_sync_one(__va(pgd_paddr), address);
 	if (!pmd_k)
 		return -1;
@@ -348,6 +357,7 @@ static noinline int vmalloc_fault(unsigned long address)
 		return 0;
 
 	pte_k = pte_offset_kernel(pmd_k, address);
+	//如果同步后，相应的PTE还不存在，则说明该地址有问题了
 	if (!pte_present(*pte_k))
 		return -1;
 
@@ -417,6 +427,10 @@ void vmalloc_sync_all(void)
 }
 
 /*
+ 
+ * 对于发生缺页异常的指针位于vmalloc区情况的处理，主要是将
+ * 主内核页表向当前进程的内核页表同步。
+
  * 64-bit:
  *
  *   Handle a fault on the vmalloc area
@@ -1175,7 +1189,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	int fault, major = 0;
 	unsigned int flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
 
-	tsk = current;  //当前进程
+	tsk = current;  //当前进程的task_struct
 	mm = tsk->mm;
 
 	/*
@@ -1191,7 +1205,8 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 
 	/*
 		我们因为异常而进入了内核虚拟内存空间 address >= TASK_SIZE
-		参考页表为init_mm.pgd
+	 * 缺页地址位于内核空间。并不代表异常发生于内核空间，有可能是用户
+     * 态访问了内核空间的地址
 	 * We fault-in kernel-space virtual memory on-demand. The
 	 * 'reference' page table is init_mm.pgd.
 	 *
@@ -1206,7 +1221,10 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 */
 	if (unlikely(fault_in_kernel_space(address))) {
 		if (!(error_code & (PF_RSVD | PF_USER | PF_PROT))) {
-			/* 同步页表、将该进程的页表与内核的主页表的信息同步 */
+			/* 
+				检查发生缺页的地址是否在vmalloc区，是则进行相应的处理
+				vmalloc_fault同步进程页表、将该进程的页表与内核的主页表的信息同步 
+			*/
 			if (vmalloc_fault(address) >= 0)
 				return;
 
@@ -1308,7 +1326,7 @@ retry:
 		might_sleep();
 	}
 
-	/* 检查进程的虚拟地址空间（vm_area_struct）是否包含异常地址所在的区域 */
+	/* 检查进程的虚拟地址空间（vm_area_struct）是否包含异常地址所在的区域（满足addr < vm_end） */
 	vma = find_vma(mm, address);
 	if (unlikely(!vma)) {  //未找到该vm_area_struct实例，则访问无效
 		bad_area(regs, error_code, address);
@@ -1332,7 +1350,7 @@ retry:
 			return;
 		}
 	}
-	/* 是栈空间，调用expand_stack拓展栈空间 */
+	/* 是栈空间，调用expand_stack拓展栈空间，使得栈空间包含异常地址addr */
 	if (unlikely(expand_stack(vma, address))) {
 		bad_area(regs, error_code, address);
 		return;

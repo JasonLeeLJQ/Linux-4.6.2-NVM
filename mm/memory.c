@@ -743,7 +743,7 @@ static void print_bad_pte(struct vm_area_struct *vma, unsigned long addr,
 struct page *vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
 				pte_t pte)
 {
-	unsigned long pfn = pte_pfn(pte);
+	unsigned long pfn = pte_pfn(pte);  //由pte得到物理页框号
 
 	if (HAVE_PTE_SPECIAL) {
 		if (likely(!pte_special(pte)))
@@ -3462,6 +3462,8 @@ static int handle_pte_fault(struct mm_struct *mm,
 		entry = pte_mkdirty(entry);
 	}
 	entry = pte_mkyoung(entry); //设置页表项的访问位
+
+	//更新pte，并且更新TLB和cache
 	if (ptep_set_access_flags(vma, address, pte, entry, flags & FAULT_FLAG_WRITE)) {
 		update_mmu_cache(vma, address, pte);
 	} else {

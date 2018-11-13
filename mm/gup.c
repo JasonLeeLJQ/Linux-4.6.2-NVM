@@ -199,6 +199,7 @@ no_page:
 }
 
 /**
+	通过虚拟地址addr寻找相应的物理页面，返回normal mapping页面对应的page结构
  * follow_page_mask - look up a page descriptor from a user-virtual address
  * @vma: vm_area_struct mapping @address
  * @address: virtual address to look up
