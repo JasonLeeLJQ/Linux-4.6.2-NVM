@@ -3663,22 +3663,87 @@ struct page_short* page_to_page_short(struct page *page,bool write)
 	return page_short;
 }
 
-//TODO:判断链表的type
-unsigned int page_short_belong_to_which_type(struct page *page, int flag)
+unsigned int page_belong_to_which_history_list(struct page* page, struct page_history **history)
 {
-	
+	struct page_history *page_history;
+	pgoff_t pfn = page_to_pfn(page);
+
+	//遍历NVM历史队列
+	list_for_each_entry(page_history, &history_list_NVM, lru){
+		if(page_history->index == pfn)
+		{
+			*history = page_history;
+			return HISTORY_NVM_LIST;
+		}
+	}
+
+	//遍历DRAM历史队列
+	list_for_each_entry(page_history, history_list_DRAM, lru){
+		if(page_history->index == pfn)
+		{	
+			*history = page_history;
+			return HISTORY_DRAM_LIST;
+		}
+	}
+	*history = NULL;
+	return NR_HISTORY_LISTS;
 }
 
-int add_page_short_to_clock_list(struct page_short *page_short, unsigned int type)
+//TODO:判断链表的type
+unsigned int page_belong_to_which_type(struct page *page)
 {
-	int error = 0;
-	if(type < 0 || type >= NR_CLOCK_LISTS)
+	unsigned int type = NR_CLOCK_LISTS;
+	struct page_history *page_history;
+	//todo:该page是否在历史队列中
+	unsigned int history_type = page_belong_to_which_history_list(page, &page_history);
+	
+	if(page_is_NVM(page))
 	{
-		return error;
+		if(history_type >= NR_HISTORY_LISTS){  //不在历史队列
+			type = CLOCK_NVM_COLD;
+		}
+		else{
+			if(page_history->sugg_bit == 1)
+				if(page_history->source_bit == 2){
+					type = CLOCK_DRAM_COLD;
+				}
+					
+			else {
+				
+			}
+		}
 	}
-	/* page_short插入到CLOCK链表 */
-	//list_add(&page_short->clock, );
+	else
+	{
+		type = CLOCK_DRAM_COLD;
+	}
+	return type;
 }
+
+int hybrid_page_insert(struct page *page,bool write)
+{
+	struct page_short *page_short = page_to_page_short(page, write);
+	unsigned int type = page_belong_to_which_type(page);
+
+	switch(type){
+		case CLOCK_NVM_COLD:
+			list_add(& (page_short->clock), & clock_list_NVM_cold);
+			break;
+		case CLOCK_NVM_HOT:
+			list_add(& (page_short->clock), & clock_list_NVM_hot);
+			break;
+		case CLOCK_DRAM_COLD:
+			list_add(& (page_short->clock), & clock_list_DRAM_cold);
+			break;
+		case CLOCK_DRAM_HOT:
+			list_add(& (page_short->clock), & clock_list_DRAM_hot);
+			break;
+		default:
+			list_add(& (page_short->clock), & clock_list_NVM_cold);
+	}
+}
+EXPORT_SYMBOL(hybrid_page_insert);
+
 
 /*end ADD*/
 

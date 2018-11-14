@@ -743,7 +743,7 @@ static void print_bad_pte(struct vm_area_struct *vma, unsigned long addr,
 struct page *vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
 				pte_t pte)
 {
-	unsigned long pfn = pte_pfn(pte);
+	unsigned long pfn = pte_pfn(pte);  //由pte得到物理页框号
 
 	if (HAVE_PTE_SPECIAL) {
 		if (likely(!pte_special(pte)))
@@ -2134,13 +2134,14 @@ static int wp_page_copy(struct mm_struct *mm, struct vm_area_struct *vma,
 	const unsigned long mmun_start = address & PAGE_MASK;	/* For mmu_notifiers */
 	const unsigned long mmun_end = mmun_start + PAGE_SIZE;	/* For mmu_notifiers */
 	struct mem_cgroup *memcg;
+	unsigned int flags = FAULT_FLAG_WRITE;
 
 	if (unlikely(anon_vma_prepare(vma)))
 		goto oom;
 
 	/* 判断该页是否是zero page，即页内数据为全0 */
 	if (is_zero_pfn(pte_pfn(orig_pte))) {  //申请一个新page，优先分配高端内存
-		new_page = alloc_zeroed_user_highpage_movable(vma, address);
+		new_page = alloc_zeroed_user_highpage_movable(vma, address, flags);
 		if (!new_page)
 			goto oom;
 	} else {
@@ -2797,8 +2798,9 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	/* 
 		如果页面是可写的，分配掩码是__GFP_MOVABLE|__GFP_WAIT|__GFP_IO|__GFP_FS|__GFP_HARDWALL|__GFP_HIGHMEM.
 		最终调用alloc_pages，优先使用高端内存。 
+		依据flags的操作类型，申请NVM or DRAM页
 	*/
-	page = alloc_zeroed_user_highpage_movable(vma, address);
+	page = alloc_zeroed_user_highpage_movable(vma, address, flags);
 	if (!page)
 		goto oom;
 
@@ -3462,6 +3464,8 @@ static int handle_pte_fault(struct mm_struct *mm,
 		entry = pte_mkdirty(entry);
 	}
 	entry = pte_mkyoung(entry); //设置页表项的访问位
+
+	//更新pte，并且更新TLB和cache
 	if (ptep_set_access_flags(vma, address, pte, entry, flags & FAULT_FLAG_WRITE)) {
 		update_mmu_cache(vma, address, pte);
 	} else {
