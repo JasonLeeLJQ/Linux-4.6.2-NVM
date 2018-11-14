@@ -333,16 +333,16 @@ enum zone_type {
 
 /*ADD*/
 enum hybrid_clock_list{
-	clock_nvm_cold,
-	clock_nvm_hot,
-	clock_dram_cold,
-	clock_dram_hot,
+	CLOCK_NVM_COLD,
+	CLOCK_NVM_HOT,
+	CLOCK_DRAM_COLD,
+	CLOCK_DRAM_HOT,
 	NR_CLOCK_LISTS  //4
 };
 
 enum hybrid_history_list{
-	history_nvm_list,
-	history_dram_list,
+	HISTORY_NVM_LIST,
+	HISTORY_DRAM_LIST,
 	NR_HISTORY_LISTS   //2
 };
 
@@ -364,8 +364,8 @@ struct page_short {
 	index：物理页框号
 */
 struct page_history {
-	bool sugg_bit;
-	bool source_bit;
+	bool sugg_bit;   //迁移 == 1；不迁移 == 0
+	bool source_bit;  //位于第一个NVM（DRAM）链表 == 1；第二个链表 == 2
 	pgoff_t index;       //页框号
 	struct list_head lru;  //历史队列的lru链表
 };

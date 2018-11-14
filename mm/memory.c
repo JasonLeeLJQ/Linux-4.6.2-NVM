@@ -2798,6 +2798,7 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	/* 
 		如果页面是可写的，分配掩码是__GFP_MOVABLE|__GFP_WAIT|__GFP_IO|__GFP_FS|__GFP_HARDWALL|__GFP_HIGHMEM.
 		最终调用alloc_pages，优先使用高端内存。 
+		依据flags的操作类型，申请NVM or DRAM页
 	*/
 	page = alloc_zeroed_user_highpage_movable(vma, address, flags);
 	if (!page)
