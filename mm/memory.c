@@ -2134,13 +2134,14 @@ static int wp_page_copy(struct mm_struct *mm, struct vm_area_struct *vma,
 	const unsigned long mmun_start = address & PAGE_MASK;	/* For mmu_notifiers */
 	const unsigned long mmun_end = mmun_start + PAGE_SIZE;	/* For mmu_notifiers */
 	struct mem_cgroup *memcg;
+	unsigned int flags = FAULT_FLAG_WRITE;
 
 	if (unlikely(anon_vma_prepare(vma)))
 		goto oom;
 
 	/* 判断该页是否是zero page，即页内数据为全0 */
 	if (is_zero_pfn(pte_pfn(orig_pte))) {  //申请一个新page，优先分配高端内存
-		new_page = alloc_zeroed_user_highpage_movable(vma, address);
+		new_page = alloc_zeroed_user_highpage_movable(vma, address, flags);
 		if (!new_page)
 			goto oom;
 	} else {
@@ -2798,7 +2799,7 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		如果页面是可写的，分配掩码是__GFP_MOVABLE|__GFP_WAIT|__GFP_IO|__GFP_FS|__GFP_HARDWALL|__GFP_HIGHMEM.
 		最终调用alloc_pages，优先使用高端内存。 
 	*/
-	page = alloc_zeroed_user_highpage_movable(vma, address);
+	page = alloc_zeroed_user_highpage_movable(vma, address, flags);
 	if (!page)
 		goto oom;
 
