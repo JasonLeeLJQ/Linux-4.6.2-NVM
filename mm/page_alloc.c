@@ -3689,7 +3689,54 @@ unsigned int page_belong_to_which_history_list(struct page* page, struct page_hi
 	return NR_HISTORY_LISTS;
 }
 
-//TODO:判断链表的type
+/*
+ * 参数@prior：位于第一个历史队列H1，prior = 0
+ 			   位于第二个历史队列H2，prior = 1
+ */
+unsigned int __page_belong_to_which_type_history(struct page_history* page_history, bool prior)
+{
+	if(!prior){ //H1队列
+		if(page_history->sugg_bit == true){
+			if(page_history->source_bit == true){
+				//需要迁移到DRAM
+				type = CLOCK_DRAM_COLD;
+			}
+			else{
+				type = CLOCK_NVM_HOT;
+			}
+		}
+		else{
+			if(page_history->source_bit == true){
+				type = CLOCK_NVM_HOT;
+			}
+			else{
+				type = CLOCK_NVM_COLD;
+			}
+		}
+	}
+	else{  //H2队列
+		if(page_history->sugg_bit == true){
+			if(page_history->source_bit == true){
+				//需要迁移到NVM
+				type = CLOCK_NVM_COLD;
+			}
+			else{
+				type = CLOCK_DRAM_COLD;
+			}
+		}
+		else{
+			if(page_history->source_bit == true){
+				type = CLOCK_DRAM_HOT;
+			}
+			else{
+				type = CLOCK_DRAM_COLD;
+			}
+		}
+	}
+	return type;
+}
+
+//TODO:判断page的type
 unsigned int page_belong_to_which_type(struct page *page)
 {
 	unsigned int type = NR_CLOCK_LISTS;
@@ -3697,24 +3744,21 @@ unsigned int page_belong_to_which_type(struct page *page)
 	//todo:该page是否在历史队列中
 	unsigned int history_type = page_belong_to_which_history_list(page, &page_history);
 	
-	if(page_is_NVM(page))
-	{
-		if(history_type >= NR_HISTORY_LISTS){  //不在历史队列
+	if(page_is_NVM(page)){
+		if(history_type >= NR_HISTORY_LISTS ){  //不在历史队列
 			type = CLOCK_NVM_COLD;
+			return type;
 		}
 		else{
-			if(page_history->sugg_bit == 1)
-				if(page_history->source_bit == 2){
-					type = CLOCK_DRAM_COLD;
-				}
-					
-			else {
-				
+			if(history_type == HISTORY_NVM_LIST){  //H1队列
+				type = __page_belong_to_which_type_history(page_history, false);
+			}
+			else{  //H2队列
+				type = __page_belong_to_which_type_history(page_history, true);
 			}
 		}
 	}
-	else
-	{
+	else{
 		type = CLOCK_DRAM_COLD;
 	}
 	return type;

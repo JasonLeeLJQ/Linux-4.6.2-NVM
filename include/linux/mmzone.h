@@ -364,8 +364,8 @@ struct page_short {
 	index：物理页框号
 */
 struct page_history {
-	bool sugg_bit;   //迁移 == 1；不迁移 == 0
-	bool source_bit;  //位于第一个NVM（DRAM）链表 == 1；第二个链表 == 2
+	bool  sugg_bit;   //迁移 == 1(true)；不迁移 == 0(false)
+	bool  source_bit;  //位于第一个NVM（DRAM）链表 == 0；第二个链表 == 1
 	pgoff_t index;       //页框号
 	struct list_head lru;  //历史队列的lru链表
 };
