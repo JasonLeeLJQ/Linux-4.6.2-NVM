@@ -3663,6 +3663,47 @@ struct page_short* page_to_page_short(struct page *page,bool write)
 	return page_short;
 }
 
+//page是否在clock链表中
+unsigned int page_belong_to_which_clock_list(struct page *page, struct page_short **result)
+{
+	struct page_short *origin_page;
+	struct page_short *tmp_page;
+
+	list_for_each_entry(tmp_page, &clock_list_NVM_cold, clock){
+		if(origin_page->page == tmp_page)
+		{
+			*result = tmp_page;
+			return CLOCK_NVM_COLD;
+		}
+	}
+
+	list_for_each_entry(tmp_page, &clock_list_DRAM_cold, clock){
+		if(origin_page->page == tmp_page)
+		{
+			*result = tmp_page;
+			return CLOCK_NVM_COLD;
+		}
+	}
+
+	list_for_each_entry(tmp_page, &clock_list_NVM_hot, clock){
+		if(origin_page->page == tmp_page)
+		{
+			*result = tmp_page;
+			return CLOCK_NVM_COLD;
+		}
+	}
+
+	list_for_each_entry(tmp_page, &clock_list_DRAM_hot, clock){
+		if(origin_page->page == tmp_page)
+		{
+			*result = tmp_page;
+			return CLOCK_NVM_COLD;
+		}
+	}
+	*result = NULL;
+	return NR_CLOCK_LISTS;
+}
+
 unsigned int page_belong_to_which_history_list(struct page* page, struct page_history **history)
 {
 	struct page_history *page_history;
@@ -3695,22 +3736,24 @@ unsigned int page_belong_to_which_history_list(struct page* page, struct page_hi
  */
 unsigned int __page_belong_to_which_type_history(struct page_history* page_history, bool prior)
 {
+	unsigned int clock_type = NR_CLOCK_LISTS;
 	if(!prior){ //H1队列
 		if(page_history->sugg_bit == true){
 			if(page_history->source_bit == true){
 				//需要迁移到DRAM
-				type = CLOCK_DRAM_COLD;
+				//TODO:添加迁移函数
+				clock_type = CLOCK_DRAM_COLD;
 			}
 			else{
-				type = CLOCK_NVM_HOT;
+				clock_type = CLOCK_NVM_HOT;
 			}
 		}
 		else{
 			if(page_history->source_bit == true){
-				type = CLOCK_NVM_HOT;
+				clock_type = CLOCK_NVM_HOT;
 			}
 			else{
-				type = CLOCK_NVM_COLD;
+				clock_type = CLOCK_NVM_COLD;
 			}
 		}
 	}
@@ -3718,56 +3761,157 @@ unsigned int __page_belong_to_which_type_history(struct page_history* page_histo
 		if(page_history->sugg_bit == true){
 			if(page_history->source_bit == true){
 				//需要迁移到NVM
-				type = CLOCK_NVM_COLD;
+				//TODO:添加迁移函数
+				clock_type = CLOCK_NVM_COLD;
 			}
 			else{
-				type = CLOCK_DRAM_COLD;
+				clock_type = CLOCK_DRAM_COLD;
 			}
 		}
 		else{
 			if(page_history->source_bit == true){
-				type = CLOCK_DRAM_HOT;
+				clock_type = CLOCK_DRAM_HOT;
 			}
 			else{
-				type = CLOCK_DRAM_COLD;
+				clock_type = CLOCK_DRAM_COLD;
 			}
 		}
 	}
-	return type;
+	return clock_type;
+}
+
+void set_dirty_bit(struct page_short *page_short){
+	page_short->dirty_bit = true;
+}
+void set_sugg_bit(struct page_short *page_short){
+	page_short->sugg_bit = true;
+}
+void set_refer_bit(struct page_short *page_short){
+	page_short->refer_bit = true;
+}
+void reset_dirty_bit(struct page_short *page_short){
+	page_short->dirty_bit = false;
+}
+void reset_refer_bit(struct page_short *page_short){
+	page_short->refer_bit = false;
+}
+void reset_sugg_bit(struct page_short *page_short){
+	page_short->sugg_bit = false;
+}
+
+
+bool type_is_NVM_list(unsigned int type){
+	if(type == clock_list_NVM_cold || type == clock_list_NVM_hot){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+
+void set_bit_in_page_short(struct page_short *page_short, unsigned int type, bool write)
+{
+	if(write){
+		if(page_short->sugg_bit){
+			if(page_short->source_bit){
+				if(type_is_NVM_list(type)){
+					//TODO:申请新DRAMpage，迁移到DRAM中,重置脏位和引用位
+				}
+				else{
+					//脏位和引用位置1
+					set_dirty_bit(page_short);
+					set_refer_bit(page_short);
+				}
+			}
+			else{
+				if(type_is_NVM_list(type)){
+					//TODO:从N1升级到N2，重置脏位和引用位
+					reset_dirty_bit(page_short);
+					reset_refer_bit(page_short);
+				}
+				else{
+					//TODO:从D2降级到D1，重置脏位和引用位
+					reset_dirty_bit(page_short);
+					reset_refer_bit(page_short);
+				}
+			}
+		}
+		else{
+			if(page_short->source_bit){
+				if(type_is_NVM_list(type)){
+					//脏位和引用位 置1，并置位sugg_bit
+					set_dirty_bit(page_short);
+					set_refer_bit(page_short);
+					set_sugg_bit(page_short);
+				}
+			}
+			else{
+				//设置
+			}
+		}
+	}
 }
 
 //TODO:判断page的type
-unsigned int page_belong_to_which_type(struct page *page)
+unsigned int page_belong_to_which_type(struct page *page, bool write)
 {
-	unsigned int type = NR_CLOCK_LISTS;
+	unsigned int clock_type = NR_CLOCK_LISTS;
 	struct page_history *page_history;
+	struct page_short *page_short;
+
+	//todo:page是否在clock链表中
+	unsigned int type = page_belong_to_which_clock_list(page, &page_short);
+	
 	//todo:该page是否在历史队列中
 	unsigned int history_type = page_belong_to_which_history_list(page, &page_history);
+
+	if(!(type >= NR_CLOCK_LISTS && page_short == NULL)){ //page在clock链表
+		if(write){
+			if(type == CLOCK_NVM_COLD || type == CLOCK_NVM_HOT){
+				//set_bit_in_page_short();
+			}
+		}
+	}
 	
 	if(page_is_NVM(page)){
-		if(history_type >= NR_HISTORY_LISTS ){  //不在历史队列
-			type = CLOCK_NVM_COLD;
-			return type;
+		if(history_type >= NR_HISTORY_LISTS || history_type < HISTORY_NVM_LIST){  //不在历史队列
+			clock_type = CLOCK_NVM_COLD;
+			return clock_type;
 		}
 		else{
 			if(history_type == HISTORY_NVM_LIST){  //H1队列
-				type = __page_belong_to_which_type_history(page_history, false);
+				clock_type = __page_belong_to_which_type_history(page_history, false);
 			}
 			else{  //H2队列
-				type = __page_belong_to_which_type_history(page_history, true);
+				clock_type = __page_belong_to_which_type_history(page_history, true);
 			}
 		}
 	}
 	else{
-		type = CLOCK_DRAM_COLD;
+		if(history_type >= NR_HISTORY_LISTS || history_type < HISTORY_NVM_LIST){  //不在历史队列
+			clock_type = CLOCK_DRAM_COLD;
+			return clock_type;
+		}
+		else{
+			if(history_type == HISTORY_NVM_LIST){  //H1队列
+				clock_type = __page_belong_to_which_type_history(page_history, false);
+			}
+			else{  //H2队列
+				clock_type = __page_belong_to_which_type_history(page_history, true);
+			}
+		}
 	}
-	return type;
+	return clock_type;
 }
 
+/*
+ * 将page转换成page_short，插入到CLOCK链表
+ */
 int hybrid_page_insert(struct page *page,bool write)
 {
 	struct page_short *page_short = page_to_page_short(page, write);
-	unsigned int type = page_belong_to_which_type(page);
+	unsigned int type = page_belong_to_which_type(page, write);
 
 	switch(type){
 		case CLOCK_NVM_COLD:
@@ -3782,8 +3926,8 @@ int hybrid_page_insert(struct page *page,bool write)
 		case CLOCK_DRAM_HOT:
 			list_add(& (page_short->clock), & clock_list_DRAM_hot);
 			break;
-		default:
-			list_add(& (page_short->clock), & clock_list_NVM_cold);
+		default:  //默认插入到DRAM_COLD链表
+			list_add(& (page_short->clock), & clock_list_DRAM_cold);
 	}
 }
 EXPORT_SYMBOL(hybrid_page_insert);

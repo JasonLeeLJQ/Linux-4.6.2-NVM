@@ -474,23 +474,23 @@ void __init __weak thread_info_cache_init(void)
 #endif
 
 /*ADD*/
-//struct list_head  clock_lists[NR_CLOCK_LISTS];
 
-//struct list_head  history_lists[NR_HISTORY_LISTS];
+//4个CLOCK链表
+struct list_head clock_list_NVM_cold  = LIST_HEAD_INIT(clock_list_NVM_cold);
+struct list_head clock_list_DRAM_cold = LIST_HEAD_INIT(clock_list_DRAM_cold);
+struct list_head clock_list_NVM_hot   = LIST_HEAD_INIT(clock_list_NVM_hot);
+struct list_head clock_list_DRAM_hot  = LIST_HEAD_INIT(clock_list_DRAM_hot);
 
-void init_hybrid_four_lists(void)
-{
-	LIST_HEAD(clock_list_NVM_cold);
-	LIST_HEAD(clock_list_DRAM_cold);
-	LIST_HEAD(clock_list_NVM_hot);
-	LIST_HEAD(clock_list_DRAM_hot);
-}
+struct list_head *clock_ptr_NVM_cold  = &clock_list_NVM_cold;
+struct list_head *clock_ptr_DRAM_cold = &clock_list_DRAM_cold;
+struct list_head *clock_ptr_NVM_hot   = &clock_list_NVM_hot;
+struct list_head *clock_ptr_DRAM_hot  = &clock_list_DRAM_hot;
 
-void init_hybrid_history_list(void)
-{
-	LIST_HEAD(history_list_NVM);
-	LIST_HEAD(history_list_DRAM);
-}
+
+//2个历史队列
+struct list_head history_list_NVM = LIST_HEAD_INIT(history_list_NVM);
+struct list_head history_list_DRAM = LIST_HEAD_INIT(history_list_DRAM);
+
 
 /*end ADD*/
 
@@ -514,8 +514,8 @@ static void __init mm_init(void)
 
 	printk(KERN_EMERG "开始初始化CLOCK链表和历史队列\n");
 	
-	init_hybrid_four_lists();  //初始化4个CLOCK链表
-	init_hybrid_history_list();	 //初始化2个历史队列
+	//init_hybrid_four_lists();  //初始化4个CLOCK链表
+	//init_hybrid_history_list();	 //初始化2个历史队列
 	/*end ADD*/
 
 	kmem_cache_init();
