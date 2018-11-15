@@ -3817,6 +3817,8 @@ void set_bit_in_page_short(struct page_short *page_short, unsigned int type, boo
 			if(page_short->source_bit){
 				if(type_is_NVM_list(type)){
 					//TODO:申请新DRAMpage，迁移到DRAM中,重置脏位和引用位
+					reset_dirty_bit(page_short);
+					reset_refer_bit(page_short);
 				}
 				else{
 					//脏位和引用位置1
@@ -3827,11 +3829,12 @@ void set_bit_in_page_short(struct page_short *page_short, unsigned int type, boo
 			else{
 				if(type_is_NVM_list(type)){
 					//TODO:从N1升级到N2，重置脏位和引用位
+					page_short->source_bit = true;
 					reset_dirty_bit(page_short);
 					reset_refer_bit(page_short);
 				}
 				else{
-					//TODO:从D2降级到D1，重置脏位和引用位
+					//TODO:脏位和引用位置1，且重置建议位
 					reset_dirty_bit(page_short);
 					reset_refer_bit(page_short);
 				}
@@ -3840,14 +3843,28 @@ void set_bit_in_page_short(struct page_short *page_short, unsigned int type, boo
 		else{
 			if(page_short->source_bit){
 				if(type_is_NVM_list(type)){
-					//脏位和引用位 置1，并置位sugg_bit
-					set_dirty_bit(page_short);
+					//判断sugg_bit是否为1，如果为1，则迁移到DRAM中
+					if(page_short->sugg_bit){
+						//TODO:迁移到DRAM，重置脏位和访问位/建议位
+						reset_sugg_bit(page_short);
+						reset_dirty_bit(page_short);
+						reset_refer_bit(page_short);
+					}
+					else{
+						set_sugg_bit(page_short);
+						set_refer_bit(page_short);
+						set_dirty_bit(page_short);
+					}
+				}
+				else{
 					set_refer_bit(page_short);
-					set_sugg_bit(page_short);
+					set_dirty_bit(page_short);
 				}
 			}
 			else{
-				//设置
+				if(type_is_NVM_list(type)){
+					
+				}
 			}
 		}
 	}
