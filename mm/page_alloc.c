@@ -3809,61 +3809,139 @@ bool type_is_NVM_list(unsigned int type){
 	}
 }
 
+int migrate_N2_to_D2(struct page_short* page_short){
+	//TODO:申请新DRAMpage，迁移到DRAM中,重置脏位和引用位
+	reset_dirty_bit(page_short);
+	reset_refer_bit(page_short);
+	reset_sugg_bit(page_short);
+	return 0;
+}
+
+int migrate_D1_to_N1(struct page_short* page_short){
+	//TODO:申请新NVMpage，迁移到NVM中,重置脏位和引用位
+	reset_dirty_bit(page_short);
+	reset_refer_bit(page_short);
+	reset_sugg_bit(page_short);
+	return 0;
+}
+
+int upgrade_N1_to_N2(struct page_short *page_short){
+	//TODO:从N1迁移到N2，不需要申请新的page，只需要将page_short从N1链表删除，加到N2链表
+	return 0;
+}
+
+int degrade_D2_to_D1(struct page_short *page_short){
+	//TODO:从D2迁移到D1，不需要申请新的page，只需要将page_short从D2链表删除，加到D1链表
+	return 0;
+}
+
+
+void set_bit_by_write(struct page_short *page_short,unsigned int type){
+	if(type_is_NVM_list(type)){
+		set_sugg_bit(page_short);
+		set_refer_bit(page_short);
+		set_dirty_bit(page_short);
+	}
+	else{
+		if(page_short->sugg_bit)
+			reset_sugg_bit(page_short);
+		set_refer_bit(page_short);
+		set_dirty_bit(page_short);
+	}
+}
+
+void set_bit_by_read(struct page_short *page_short, unsigned int type){
+	if(type_is_NVM_list(type)){
+		if(page_short->sugg_bit)
+			reset_sugg_bit(page_short);
+		reset_dirty_bit(page_short);
+		set_refer_bit(page_short);
+	}
+	else{
+		reset_dirty_bit(page_short);
+		set_refer_bit(page_short);
+		set_sugg_bit(page_short);
+	}
+}
 
 void set_bit_in_page_short(struct page_short *page_short, unsigned int type, bool write)
 {
-	if(write){
-		if(page_short->sugg_bit){
-			if(page_short->source_bit){
-				if(type_is_NVM_list(type)){
-					//TODO:申请新DRAMpage，迁移到DRAM中,重置脏位和引用位
-					reset_dirty_bit(page_short);
-					reset_refer_bit(page_short);
+	if(type_is_NVM_list(type)){
+		if(page_short->source_bit){
+			if(page_short->sugg_bit){
+				if(write){
+					//TODO:N2迁移到D2
+					migrate_N2_to_D2(page_short);
 				}
 				else{
-					//脏位和引用位置1
-					set_dirty_bit(page_short);
-					set_refer_bit(page_short);
+					set_bit_by_read(page_short, type);
 				}
 			}
 			else{
-				if(type_is_NVM_list(type)){
-					//TODO:从N1升级到N2，重置脏位和引用位
-					page_short->source_bit = true;
-					reset_dirty_bit(page_short);
-					reset_refer_bit(page_short);
+				if(write){
+					set_bit_by_write(page_short, type);
 				}
 				else{
-					//TODO:脏位和引用位置1，且重置建议位
-					reset_dirty_bit(page_short);
-					reset_refer_bit(page_short);
+					set_bit_by_read(page_short, type);
 				}
 			}
 		}
 		else{
-			if(page_short->source_bit){
-				if(type_is_NVM_list(type)){
-					//判断sugg_bit是否为1，如果为1，则迁移到DRAM中
-					if(page_short->sugg_bit){
-						//TODO:迁移到DRAM，重置脏位和访问位/建议位
-						reset_sugg_bit(page_short);
-						reset_dirty_bit(page_short);
-						reset_refer_bit(page_short);
-					}
-					else{
-						set_sugg_bit(page_short);
-						set_refer_bit(page_short);
-						set_dirty_bit(page_short);
-					}
+			if(page_short->sugg_bit){
+				if(write){
+					//TODO:从N1升级到N2
+					upgrade_N1_to_N2(page_short);
 				}
 				else{
-					set_refer_bit(page_short);
-					set_dirty_bit(page_short);
+					set_bit_by_read(page_short, type);
 				}
 			}
 			else{
-				if(type_is_NVM_list(type)){
-					
+				if(write){
+					set_bit_by_write(page_short, type);
+				}
+				else{
+					set_bit_by_read(page_short, type);
+				}
+			}
+		}
+	}
+	else{
+		if(page_short->source_bit){
+			if(page_short->sugg_bit){
+				if(write){
+					set_bit_by_write(page_short, type);
+				}
+				else{
+					//TODO:从D2降级到D1
+					degrade_D2_to_D1(page_short);
+				}
+			}
+			else{
+				if(write){
+					set_bit_by_write(page_short, type);
+				}
+				else{
+					set_bit_by_read(page_short, type);
+				}
+			}
+		}
+		else{
+			if(page_short->sugg_bit){
+				if(write){
+					set_bit_by_write(page_short, type);
+				}
+				else{
+					//TODO:从D1迁移到N1
+					migrate_D1_to_N1(page_short);
+				}
+			}
+			else{
+				if(write){
+					set_bit_by_write(page_short, type);
+				}
+				else{
+					set_bit_by_read(page_short, type);
 				}
 			}
 		}
@@ -3884,11 +3962,8 @@ unsigned int page_belong_to_which_type(struct page *page, bool write)
 	unsigned int history_type = page_belong_to_which_history_list(page, &page_history);
 
 	if(!(type >= NR_CLOCK_LISTS && page_short == NULL)){ //page在clock链表
-		if(write){
-			if(type == CLOCK_NVM_COLD || type == CLOCK_NVM_HOT){
-				//set_bit_in_page_short();
-			}
-		}
+		//在此处完成CLOCK链表的迁移、升级、降级过程
+		set_bit_in_page_short(page_short, type, write);
 	}
 	
 	if(page_is_NVM(page)){
