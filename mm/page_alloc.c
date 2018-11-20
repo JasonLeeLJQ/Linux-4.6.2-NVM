@@ -3734,7 +3734,7 @@ unsigned int page_belong_to_which_history_list(struct page* page, struct page_hi
  * 参数@prior：位于第一个历史队列H1，prior = 0
  			   位于第二个历史队列H2，prior = 1
  */
-unsigned int __page_belong_to_which_type_history(struct page_history* page_history, bool prior)
+unsigned int __page_belong_to_which_type_history(struct page *page, struct page_history* page_history, bool prior, struct page **new_page)
 {
 	unsigned int clock_type = NR_CLOCK_LISTS;
 	if(!prior){ //H1队列
@@ -3742,6 +3742,10 @@ unsigned int __page_belong_to_which_type_history(struct page_history* page_histo
 			if(page_history->source_bit == true){
 				//需要迁移到DRAM
 				//TODO:添加迁移函数
+				if(page_is_NVM(page)){
+					//申请DRAM页面，并且释放之前的NVM页面
+					//*new_page = alloc_page(__GFP_NVM);
+				}
 				clock_type = CLOCK_DRAM_COLD;
 			}
 			else{
@@ -3949,6 +3953,7 @@ void set_bit_in_page_short(struct page_short *page_short, unsigned int type, boo
 }
 
 //TODO:判断page的type
+//在该函数调用之前，已经依据page的操作申请不同类型的page了，在此处不需要再次判断了
 unsigned int page_belong_to_which_type(struct page *page, bool write)
 {
 	unsigned int clock_type = NR_CLOCK_LISTS;
@@ -3964,41 +3969,33 @@ unsigned int page_belong_to_which_type(struct page *page, bool write)
 	if(!(type >= NR_CLOCK_LISTS && page_short == NULL)){ //page在clock链表
 		//在此处完成CLOCK链表的迁移、升级、降级过程
 		set_bit_in_page_short(page_short, type, write);
+		return NR_CLOCK_LISTS + 1;  //在CLOCK链表中，不需要重新插入了
 	}
-	
-	if(page_is_NVM(page)){
-		if(history_type >= NR_HISTORY_LISTS || history_type < HISTORY_NVM_LIST){  //不在历史队列
+
+	//page不在clock链表（位于历史队列，或者根本不在内存中）
+	if(history_type >= NR_HISTORY_LISTS || history_type < HISTORY_NVM_LIST){  //不在历史队列中
+		if(page_is_NVM(page)){
 			clock_type = CLOCK_NVM_COLD;
-			return clock_type;
 		}
 		else{
-			if(history_type == HISTORY_NVM_LIST){  //H1队列
-				clock_type = __page_belong_to_which_type_history(page_history, false);
-			}
-			else{  //H2队列
-				clock_type = __page_belong_to_which_type_history(page_history, true);
-			}
+			clock_type = CLOCK_DRAM_COLD;
 		}
 	}
 	else{
-		if(history_type >= NR_HISTORY_LISTS || history_type < HISTORY_NVM_LIST){  //不在历史队列
-			clock_type = CLOCK_DRAM_COLD;
-			return clock_type;
+		if(history_type == HISTORY_DRAM_LIST){  //H1队列
+			clock_type = __page_belong_to_which_type_history(page, page_history, false);
 		}
-		else{
-			if(history_type == HISTORY_NVM_LIST){  //H1队列
-				clock_type = __page_belong_to_which_type_history(page_history, false);
-			}
-			else{  //H2队列
-				clock_type = __page_belong_to_which_type_history(page_history, true);
-			}
+		else{    //H2队列
+			clock_type = __page_belong_to_which_type_history(page, page_history, true);
 		}
 	}
+	
 	return clock_type;
 }
 
 /*
  * 将page转换成page_short，插入到CLOCK链表
+ @page :二级指针，可以修改page
  */
 int hybrid_page_insert(struct page *page,bool write)
 {
@@ -4019,7 +4016,12 @@ int hybrid_page_insert(struct page *page,bool write)
 			list_add(& (page_short->clock), & clock_list_DRAM_hot);
 			break;
 		default:  //默认插入到DRAM_COLD链表
-			list_add(& (page_short->clock), & clock_list_DRAM_cold);
+			if(type > NR_CLOCK_LISTS){  //本来就在clock链表中，不要再插入了
+				break;
+			}
+			else{  //否则，默认插入到DRAM_COLD链表中
+				list_add(& (page_short->clock), & clock_list_DRAM_cold);
+			}
 	}
 }
 EXPORT_SYMBOL(hybrid_page_insert);
