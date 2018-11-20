@@ -481,6 +481,7 @@ struct list_head clock_list_DRAM_cold = LIST_HEAD_INIT(clock_list_DRAM_cold);
 struct list_head clock_list_NVM_hot   = LIST_HEAD_INIT(clock_list_NVM_hot);
 struct list_head clock_list_DRAM_hot  = LIST_HEAD_INIT(clock_list_DRAM_hot);
 
+//clock指针
 struct list_head *clock_ptr_NVM_cold  = &clock_list_NVM_cold;
 struct list_head *clock_ptr_DRAM_cold = &clock_list_DRAM_cold;
 struct list_head *clock_ptr_NVM_hot   = &clock_list_NVM_hot;
